@@ -68,6 +68,7 @@ The application uses a `settings.conf` file to manage configuration settings, su
 ```ini
 [General]
 log_level = INFO
+port = 8000
 timeout = 30
 address = EaHp99kaAWKde7osRT69pRSyKR2QdCptVe
 amount = 0.01
@@ -75,6 +76,7 @@ rate_limit = 1
 ```
 
 - **`log_level`**: The logging level for the application. Can be set to `DEBUG`, `INFO`, `WARNING`, `ERROR`, or `CRITICAL`.
+- **`port`**: The desired port for the service to listen on.
 - **`timeout`**: The time (in seconds) to wait for a response from the blockchain node.
 - **`address`**: The address from which the faucet will distribute cryptocurrency.
 - **`amount`**: The amount of cryptocurrency (in Evrmore) to be sent per request.
