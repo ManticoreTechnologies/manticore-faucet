@@ -13,7 +13,7 @@ After=network.target
 User={config["Permission"]["user"]}
 Group={config["Permission"]["group"]}
 WorkingDirectory={os.getcwd()}
-ExecStart=gunicorn -w 1 -b {config["General"]["ip"]}:{config["General"]["port"]} startup:app
+ExecStart=gunicorn --certfile={config["SSL"]["certfile"]} --keyfile={config["SSL"]["keyfile"]} -w 1 -b {config["General"]["ip"]}:{config["General"]["port"]} startup:app
 Restart=always
 
 [Install]
