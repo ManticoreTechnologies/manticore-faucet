@@ -12,7 +12,20 @@ import time
 # Initialize the logger
 logger = create_logger()
 
-@app.route("/", methods=['POST'])
+
+@app.route("/balance", methods=['GET'])
+def balance():
+    try:
+        balances = send_command('listassetbalancesbyaddress', [config['General']['address']])
+        evr_balance = send_command('getbalance')
+        balances.update({'EVR':evr_balance})
+        logger.debug(f'Received {len(balances)} asset balances')
+        return balances
+    except Exception as e:
+        logger.critical(f'Failed to load faucet balances. Is the node running on port {config["Node"]["port"]}.')
+        return jsonify({"error": "Failed to load faucet balances. Please try again later."}), 500
+
+@app.route("/request", methods=['POST'])
 @limiter.limit(f"{config['General']['rate_limit']} per day")
 def faucet():
     """
