@@ -1,29 +1,91 @@
-# Manticore Technologies LLC
-# (c) 2024 
-# Manticore Crypto Faucet
-#       routes.py 
-
+import redis
+import json
 from startup import app, limiter
 from rpc import send_command
 from utils import create_logger, config
 from flask import jsonify, request
 import time
 
+# Initialize Redis connection
+redis_client = redis.Redis(host='localhost', port=6379, db=0)  # Adjust host/port/db if necessary
+
 # Initialize the logger
 logger = create_logger()
+
+
+def save_asset_to_redis(asset_name, asset_data):
+    """
+    Save asset data to Redis as JSON, excluding the balance.
+    """
+    try:
+        asset_data_str = json.dumps(asset_data)  # Convert asset data to JSON string
+        redis_client.set(f"asset:{asset_name}", asset_data_str)  # Save to Redis
+        logger.debug(f"Asset {asset_name} saved to Redis.")
+    except Exception as e:
+        logger.error(f"Failed to save asset {asset_name} to Redis: {str(e)}")
+
+
+def get_asset_from_redis(asset_name):
+    """
+    Retrieve asset data from Redis. Returns None if not found.
+    """
+    try:
+        asset_data_str = redis_client.get(f"asset:{asset_name}")
+        if asset_data_str:
+            return json.loads(asset_data_str)  # Convert back to Python dict
+        return None
+    except Exception as e:
+        logger.error(f"Failed to retrieve asset {asset_name} from Redis: {str(e)}")
+        return None
 
 
 @app.route("/balance", methods=['GET'])
 def balance():
     try:
+        # Get the balances for all assets
         balances = send_command('listassetbalancesbyaddress', [config['General']['address']])
+        
+        # Get the EVR balance and add it to the balances dictionary
         evr_balance = send_command('getbalance')
-        balances.update({'EVR':evr_balance})
-        logger.debug(f'Received {len(balances)} asset balances')
-        return balances
+        balances.update({'EVR': evr_balance})
+        
+        asset_details = {}
+        
+        # Loop through each asset and fetch asset data from Redis or the node
+        for asset_name, balance in balances.items():
+            try:
+                # Try to load the asset data from Redis first
+                asset_data = get_asset_from_redis(asset_name)
+                
+                if asset_data is None and asset_name != 'EVR':  # If not found in Redis, fetch from node
+                    asset_data = send_command('getassetdata', [asset_name])
+                    save_asset_to_redis(asset_name, asset_data)  # Save the asset data to Redis
+                
+                # Handle EVR separately as it's the native token
+                if asset_name == 'EVR':
+                    asset_data = {
+                        'asset_name': 'EVR',
+                        'balance': evr_balance,
+                        'ipfs_hash': None,  # EVR doesn't have an IPFS hash
+                        'details': 'Native Evrmore asset'
+                    }
+                
+                # Add the balance to the asset_data
+                asset_data['balance'] = balance
+                
+                # Store the combined asset data in the result dictionary
+                asset_details[asset_name] = asset_data
+            
+            except Exception as e:
+                logger.error(f"Failed to retrieve asset data for {asset_name}: {str(e)}")
+        
+        logger.debug(f'Received {len(asset_details)} asset balances and details')
+        return jsonify(asset_details)
+    
     except Exception as e:
-        logger.critical(f'Failed to load faucet balances. Is the node running on port {config["Node"]["port"]}.')
+        logger.critical(f'Failed to load faucet balances. Is the node running on port {config["Node"]["port"]}? Error: {e}')
         return jsonify({"error": "Failed to load faucet balances. Please try again later."}), 500
+
 
 @app.route("/request", methods=['POST'])
 @limiter.limit(f"{config['General']['rate_limit']} per day")
