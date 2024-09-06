@@ -2,7 +2,7 @@ import os
 import subprocess
 from utils import config
 
-SERVICE_NAME = "manticore_faucet"
+SERVICE_NAME = "manticore-faucet"
 SERVICE_FILE = f"/etc/systemd/system/{SERVICE_NAME}.service"
 
 SERVICE_CONTENT = f"""[Unit]
