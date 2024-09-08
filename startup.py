@@ -1,15 +1,10 @@
-# Manticore Technologies LLC
-# (c) 2024 
-# Manticore Crypto Faucet
-#       startup.py 
-
 # Import utilities
 from utils import create_logger, welcome_message, config
 
 # Create a logger
 logger = create_logger()
 
-# Import flask
+# Import Flask
 from flask import Flask
 
 # Create flask application
@@ -22,40 +17,36 @@ print(welcome_message)
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from redis import Redis
-redis_connection = Redis(host='localhost', port=6379, db=0)
+import os
+
+# Use environment variables to get Redis host and port
+redis_host = os.getenv('REDIS_HOST', 'localhost')
+redis_port = int(os.getenv('REDIS_PORT', 6379))
+
+redis_connection = Redis(host=redis_host, port=redis_port, db=0)
+
 limiter = Limiter(
     key_func=get_remote_address,
     app=app,
-    storage_uri="redis://localhost:6379/0",  # Pointing Flask-Limiter to Redis
+    storage_uri=f"redis://{redis_host}:{redis_port}/0",  # Use the Redis container
 )
 
 # CORS policy for local development
 from flask_cors import CORS
-CORS(app) # Set CORS policy
-# Set the Content Security Policy
+CORS(app)
+
+# Content Security Policy
 csp = {
-    'default-src': [
-        '\'self\'',
-        'https://cdn.jsdelivr.net',
-    ],
-    'script-src': [
-        '\'self\'',
-        'https://cdn.jsdelivr.net',
-    ]
+    'default-src': ['\'self\'', 'https://cdn.jsdelivr.net'],
+    'script-src': ['\'self\'', 'https://cdn.jsdelivr.net'],
 }
-# Initialize Flask-Talisman with the CSP and enforce HTTPS
+
+# Initialize Flask-Talisman with CSP
 from flask_talisman import Talisman
 talisman = Talisman(
     app,
     content_security_policy=csp,
     force_https=False,
-    strict_transport_security=True,
-    strict_transport_security_max_age=31536000,
-    strict_transport_security_include_subdomains=True,
-    strict_transport_security_preload=True
 )
 
-
-
-import routes
-
+import routes  # Import routes
