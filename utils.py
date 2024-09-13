@@ -65,8 +65,10 @@ def parse_args():
 
 # Settings #
 import configparser
+settings = configparser.ConfigParser()
+settings.read('settings.conf')
 config = configparser.ConfigParser()
-config.read('settings.conf')
+config.read(settings['General']['config_path'])
 
 
 # Welcome #
